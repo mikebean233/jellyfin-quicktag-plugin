@@ -39,21 +39,47 @@ jobs:
       - name: Package
         id: package
         run: |
-          v=${{ steps.version.outputs.version }}
+          zip="dist/quicktag_${{ steps.version.outputs.version }}.zip"
           mkdir -p dist
-          zip -j "dist/quicktag_$v.zip" Jellyfin.Plugin.QuickTag/bin/Release/net10.0/Jellyfin.Plugin.QuickTag.dll
-          echo "zip=dist/quicktag_$v.zip" >> "$GITHUB_OUTPUT"
-          echo "md5=$(md5sum dist/quicktag_$v.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          zip -j "$zip" Jellyfin.Plugin.QuickTag/bin/Release/net10.0/Jellyfin.Plugin.QuickTag.dll
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$zip" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "md5=$(md5sum "$zip" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Manifest
+        # Jellyfin plugin repository file for this release only, so the repository URL
+        # .../releases/download/<tag>/manifest.json always offers exactly this version
+        run: |
+          zip="${{ steps.package.outputs.zip }}"
+          jq -n \
+            --arg version "${{ steps.version.outputs.version }}" \
+            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$(basename "$zip")" \
+            --arg md5 "${{ steps.package.outputs.md5 }}" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg tag "$GITHUB_REF_NAME" \
+            '[{
+              guid: "1746460b-89cc-4a19-869e-82e4ea79f6fd",
+              name: "QuickTag",
+              overview: "Add and remove tags on many titles quickly",
+              description: "Adds a Tag mode to the web client: pick or create a tag, then click titles to add or remove it. Needs the File Transformation plugin.",
+              owner: "mikebean233",
+              category: "General",
+              versions: [{
+                version: $version, changelog: ("Release " + $tag), targetAbi: "12.4.0.0",
+                sourceUrl: $url, checksum: $md5, timestamp: $ts
+              }]
+            }]' > dist/manifest.json
+          cat dist/manifest.json
 
       - uses: actions/upload-artifact@v4
         with:
           name: quicktag
-          path: dist/*.zip
+          path: dist/*
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" ${{ steps.package.outputs.zip }} \
-            --title "$GITHUB_REF_NAME" --notes "Checksum (md5): ${{ steps.package.outputs.md5 }}"
+          gh release create "$GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" dist/manifest.json \
+            --title "$GITHUB_REF_NAME" --notes "Jellyfin repository (this version only): https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/manifest.json · md5 ${{ steps.package.outputs.md5 }} · sha256 ${{ steps.package.outputs.sha256 }}"

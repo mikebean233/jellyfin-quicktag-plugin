@@ -41,10 +41,22 @@ Only administrators see the Tag mode button; the API requires an administrator t
 
 ## Install
 
-Download `quicktag_<version>.zip` from the
-[releases](https://github.com/mikebean233/jellyfin-quicktag-plugin/releases), unzip it into
-`<config>/plugins/QuickTag/` (so `<config>/plugins/QuickTag/Jellyfin.Plugin.QuickTag.dll`
-exists), restart Jellyfin, and reload the web client.
+Each release has a Jellyfin plugin repository file that offers just that release. In
+**Dashboard → Plugins → Repositories**, add
+
+```
+https://github.com/mikebean233/jellyfin-quicktag-plugin/releases/download/v1.0.0/manifest.json
+```
+
+(swap the tag to pin another version, or use `releases/latest/download/manifest.json` to
+follow new releases), then install **QuickTag** from the catalog and restart Jellyfin.
+
+The same works for File Transformation with
+`https://github.com/mikebean233/jellyfin-plugin-file-transformation/releases/download/v3.0.3.2/manifest.json`,
+a fork without HTTP endpoint callbacks. Don't add upstream's repository as well.
+
+To install by hand instead, unzip a release's `quicktag_<version>.zip` into
+`<config>/plugins/QuickTag/` and restart.
 
 ## Build
 
@@ -53,7 +65,7 @@ dotnet build -c Release
 # Jellyfin.Plugin.QuickTag/bin/Release/net10.0/Jellyfin.Plugin.QuickTag.dll
 ```
 
-Pushing a `vX.Y.Z` tag builds the plugin and attaches the zip to a GitHub release.
+Pushing a `vX.Y.Z` tag builds the plugin and attaches the zip and its `manifest.json` to a GitHub release.
 
 ## How it works
 
