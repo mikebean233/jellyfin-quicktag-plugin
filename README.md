@@ -45,7 +45,7 @@ Each release has a Jellyfin plugin repository file that offers just that release
 **Dashboard → Plugins → Repositories**, add
 
 ```
-https://github.com/mikebean233/jellyfin-quicktag-plugin/releases/download/v1.0.0/manifest.json
+https://github.com/mikebean233/jellyfin-quicktag-plugin/releases/download/v1.0.1/manifest.json
 ```
 
 (swap the tag to pin another version, or use `releases/latest/download/manifest.json` to

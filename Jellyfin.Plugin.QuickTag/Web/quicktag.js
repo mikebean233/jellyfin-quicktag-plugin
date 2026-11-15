@@ -163,11 +163,17 @@ body.qt-active .qt-card .cardScalable,
 body.qt-active .qt-card.listItem { position: relative; transition: opacity .15s; }
 body.qt-active.qt-has-tag .qt-card:not(.qt-on) .cardScalable,
 body.qt-active.qt-has-tag .qt-card.listItem:not(.qt-on) { opacity: .55; }
-body.qt-active .qt-card.qt-on .cardScalable { outline: 3px solid var(--qt-on); outline-offset: 2px; border-radius: .2em; }
+/* Highlights are drawn inside the poster: cards have 'contain: content', which clips anything
+   outside the card's box, and the poster sits flush with the card's left edge */
+body.qt-active .qt-card.qt-on .cardScalable::after,
+body.qt-active .qt-card.qt-cursor .cardScalable::after { content: ''; position: absolute; inset: 0; z-index: 4;
+  pointer-events: none; border-radius: 3px; box-shadow: inset 0 0 0 3px var(--qt-on); }
+body.qt-active .qt-card.qt-cursor .cardScalable::after { box-shadow: inset 0 0 0 3px #fff; }
+body.qt-active .qt-card.qt-on.qt-cursor .cardScalable::after { box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 6px var(--qt-on); }
+body.qt-active .qt-card.qt-cursor .cardScalable { opacity: 1; }
 body.qt-active .qt-card.listItem.qt-on { box-shadow: inset 4px 0 0 var(--qt-on); }
-body.qt-active .qt-card.qt-cursor .cardScalable,
-body.qt-active .qt-card.listItem.qt-cursor { outline: 3px solid #fff; outline-offset: 2px; opacity: 1; }
-body.qt-active .qt-card.qt-on.qt-cursor .cardScalable { outline-color: #b6ffd5; }
+body.qt-active .qt-card.listItem.qt-cursor { box-shadow: inset 0 0 0 2px #fff; opacity: 1; }
+body.qt-active .qt-card.listItem.qt-on.qt-cursor { box-shadow: inset 4px 0 0 var(--qt-on), inset 0 0 0 2px #fff; }
 .qt-badge { position: absolute; top: .4em; right: .4em; z-index: 5; width: 1.9em; height: 1.9em; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; pointer-events: none;
   background: rgba(0,0,0,.65); color: #fff; border: 2px solid rgba(255,255,255,.7); font-size: 14px; }
