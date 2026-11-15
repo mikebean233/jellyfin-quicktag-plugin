@@ -170,15 +170,17 @@ body.qt-active .qt-card.qt-cursor .cardScalable::after { content: ''; position: 
   pointer-events: none; border-radius: 3px; box-shadow: inset 0 0 0 3px var(--qt-on); }
 body.qt-active .qt-card.qt-cursor .cardScalable::after { box-shadow: inset 0 0 0 3px #fff; }
 body.qt-active .qt-card.qt-on.qt-cursor .cardScalable::after { box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 6px var(--qt-on); }
-body.qt-active .qt-card.qt-cursor .cardScalable { opacity: 1; }
+/* the highlighted title is never dimmed (as specific as the dimming rule above, and later) */
+body.qt-active.qt-has-tag .qt-card.qt-cursor:not(.qt-on) .cardScalable,
+body.qt-active.qt-has-tag .qt-card.listItem.qt-cursor:not(.qt-on) { opacity: 1; }
 body.qt-active .qt-card.listItem.qt-on { box-shadow: inset 4px 0 0 var(--qt-on); }
-body.qt-active .qt-card.listItem.qt-cursor { box-shadow: inset 0 0 0 2px #fff; opacity: 1; }
+body.qt-active .qt-card.listItem.qt-cursor { box-shadow: inset 0 0 0 2px #fff; }
 body.qt-active .qt-card.listItem.qt-on.qt-cursor { box-shadow: inset 4px 0 0 var(--qt-on), inset 0 0 0 2px #fff; }
 .qt-badge { position: absolute; top: .4em; right: .4em; z-index: 5; width: 1.9em; height: 1.9em; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; pointer-events: none;
   background: rgba(0,0,0,.65); color: #fff; border: 2px solid rgba(255,255,255,.7); font-size: 14px; }
 .qt-badge .material-icons { font-size: 1.25em; }
-.qt-card.listItem .qt-badge { position: static; flex: none; margin-right: .6em; }
+.qt-card.listItem .qt-badge { top: .5em; right: auto; left: .5em; }
 body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none; }
 .qt-card:not(.qt-on) .qt-badge { opacity: 0; }
 .qt-card:not(.qt-on):hover .qt-badge, .qt-card.qt-cursor:not(.qt-on) .qt-badge { opacity: 1; }

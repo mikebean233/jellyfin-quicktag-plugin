@@ -3,9 +3,11 @@
 Bulk tag editing from the Jellyfin web client. Turn on **Tag mode**, pick a tag (or type a new
 one), then click titles to add or remove it: no metadata editor, no leaving the page.
 
+![Tag mode on the Movies page: titles tagged "Family Night" have a green border and check, the rest are dimmed, and the keyboard highlight is on an untagged title](docs/tag-mode.jpg)
+
 - Works on any page that shows movies or shows: library grids and lists, home rows, search,
   collections, a show's seasons and episodes.
-- Click a title to toggle the tag. Tagged titles get a green outline and check; the rest are dimmed.
+- Click a title to toggle the tag. Tagged titles get a green border and check; the rest are dimmed.
 - **Shift+click** applies the same change to every title between the last one clicked and this one.
 - **Tag all / Untag all** for everything on the page (click twice to confirm).
 - On a details page, **This title** toggles the tag on the title itself.
@@ -13,6 +15,10 @@ one), then click titles to add or remove it: no metadata editor, no leaving the 
   (children whose tags are locked are skipped).
 - **Undo** (Ctrl/Cmd+Z), up to 50 steps.
 - The last five tags are one click (or key **1**–**5**) away.
+
+| Pick or create a tag | Tag a whole season from its page |
+| --- | --- |
+| ![The tag picker filtering existing tags as you type, with an option to create a new one](docs/tag-picker.jpg) | ![A season page: "This title" tagged the season and its episodes, with the keyboard shortcuts shown under the bar](docs/episodes.jpg) |
 
 Keyboard, while Tag mode is on:
 
@@ -45,7 +51,7 @@ Each release has a Jellyfin plugin repository file that offers just that release
 **Dashboard → Plugins → Repositories**, add
 
 ```
-https://github.com/mikebean233/jellyfin-quicktag-plugin/releases/download/v1.0.1/manifest.json
+https://github.com/mikebean233/jellyfin-quicktag-plugin/releases/download/v1.0.2/manifest.json
 ```
 
 (swap the tag to pin another version, or use `releases/latest/download/manifest.json` to
