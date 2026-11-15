@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Version
+        id: version
+        run: |
+          # v1.2.3 tag -> 1.2.3.0; otherwise the version in build.yaml
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            v="${GITHUB_REF#refs/tags/v}"; [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && v="$v.0"
+          else
+            v=$(sed -n 's/^version: "\(.*\)"/\1/p' build.yaml)
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: dotnet build Jellyfin.Plugin.QuickTag -c Release -p:Version=${{ steps.version.outputs.version }} -p:AssemblyVersion=${{ steps.version.outputs.version }} -p:FileVersion=${{ steps.version.outputs.version }}
+
+      - name: Package
+        id: package
+        run: |
+          v=${{ steps.version.outputs.version }}
+          mkdir -p dist
+          zip -j "dist/quicktag_$v.zip" Jellyfin.Plugin.QuickTag/bin/Release/net10.0/Jellyfin.Plugin.QuickTag.dll
+          echo "zip=dist/quicktag_$v.zip" >> "$GITHUB_OUTPUT"
+          echo "md5=$(md5sum dist/quicktag_$v.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quicktag
+          path: dist/*.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" ${{ steps.package.outputs.zip }} --title "$GITHUB_REF_NAME" --notes "Checksum (md5): ${{ steps.package.outputs.md5 }}"

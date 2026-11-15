@@ -1,0 +1,17 @@
+---
+name: "QuickTag"
+guid: "1746460b-89cc-4a19-869e-82e4ea79f6fd"
+version: "1.0.0.0"
+targetAbi: "12.4.0.0"
+framework: "net10.0"
+overview: "Add and remove tags on many titles quickly, right from the library views"
+description: >
+  Adds a Tag mode to the Jellyfin web client. Pick (or create) a tag, then click titles
+  on any library, home, search or details page to add or remove it, without opening
+  the metadata editor. Requires the File Transformation plugin to load its web UI.
+category: "General"
+owner: "mikebean233"
+artifacts:
+- "Jellyfin.Plugin.QuickTag.dll"
+changelog: >
+  Initial release.
