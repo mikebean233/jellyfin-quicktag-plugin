@@ -24,12 +24,12 @@ Keyboard, while Tag mode is on:
 
 | Key | Does |
 | --- | --- |
-| ← ↑ ↓ → | move between titles |
+| ← ↑ ↓ → | move between titles; ↑ from the top row goes to the bar, where ← → move between its controls and ↓ comes back |
 | Space / Enter | toggle the tag on the highlighted title (Shift: range) |
 | `/` or `t` | change tag |
 | 1–5 | switch to a recent tag |
 | Ctrl/Cmd+Z | undo |
-| Esc | leave Tag mode |
+| Esc (Back on a TV remote) | leave Tag mode |
 
 Only administrators see the Tag mode button; the API requires an administrator too.
 
@@ -51,7 +51,7 @@ Each release has a Jellyfin plugin repository file that offers just that release
 **Dashboard → Plugins → Repositories**, add
 
 ```
-https://github.com/mikebean233/jellyfin-quicktag-plugin/releases/download/v1.0.2/manifest.json
+https://github.com/mikebean233/jellyfin-quicktag-plugin/releases/download/v1.0.3/manifest.json
 ```
 
 (swap the tag to pin another version, or use `releases/latest/download/manifest.json` to
