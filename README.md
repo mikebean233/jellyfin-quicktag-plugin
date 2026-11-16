@@ -71,7 +71,7 @@ dotnet build -c Release
 # Jellyfin.Plugin.QuickTag/bin/Release/net10.0/Jellyfin.Plugin.QuickTag.dll
 ```
 
-Pushing a `vX.Y.Z` tag builds the plugin and attaches the zip and its `manifest.json` to a GitHub release.
+Every push to `main` is released as the next version: the latest tag's patch number plus one, or the version in `build.yaml` when that's higher (raise it there for a minor or major release). CI tags the commit and attaches the zip and its `manifest.json` to a GitHub release. Pushing a `vX.Y.Z` tag by hand releases that version instead.
 
 ## How it works
 

@@ -10,11 +10,17 @@ on:
 permissions:
   contents: write
 
+# Releases from main take the next version number, so they run one at a time
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && 'release' || github.run_id }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags, for the next version
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -23,13 +29,31 @@ jobs:
       - name: Version
         id: version
         run: |
-          # v1.2.3 tag -> 1.2.3.0; otherwise the version in build.yaml
+          file=$(sed -n 's/^version: "\(.*\)"/\1/p' build.yaml)
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            v="${GITHUB_REF#refs/tags/v}"; [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && v="$v.0"
+            # a tag pushed by hand: v1.2.3 -> 1.2.3.0
+            tag="$GITHUB_REF_NAME"; v="${tag#v}"; [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && v="$v.0"
+            release=true
+          elif [[ "$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == push ]]; then
+            # every push to main is released as the next version: the latest tag's patch
+            # + 1, or build.yaml's version when that's higher (to bump minor or major)
+            latest=$(git tag -l 'v*' | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+            latest=${latest:-0.0.0}
+            bumped="${latest%.*}.$(( ${latest##*.} + 1 ))"
+            next=$(printf '%s\n' "$bumped" "${file%.0}" | sort -V | tail -1)
+            git rev-parse -q --verify "refs/tags/v$next" >/dev/null && { echo "v$next already exists" >&2; exit 1; }
+            tag="v$next"; v="$next.0"
+            release=true
           else
-            v=$(sed -n 's/^version: "\(.*\)"/\1/p' build.yaml)
+            tag="$GITHUB_REF_NAME"; v="$file"
+            release=false
           fi
-          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Version $v (tag $tag, release: $release)"
+          {
+            echo "version=$v"
+            echo "tag=$tag"
+            echo "release=$release"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build
         run: |
@@ -53,10 +77,10 @@ jobs:
           zip="${{ steps.package.outputs.zip }}"
           jq -n \
             --arg version "${{ steps.version.outputs.version }}" \
-            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$(basename "$zip")" \
+            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/${{ steps.version.outputs.tag }}/$(basename "$zip")" \
             --arg md5 "${{ steps.package.outputs.md5 }}" \
             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg tag "$GITHUB_REF_NAME" \
+            --arg tag "${{ steps.version.outputs.tag }}" \
             '[{
               guid: "1746460b-89cc-4a19-869e-82e4ea79f6fd",
               name: "QuickTag",
@@ -77,9 +101,12 @@ jobs:
           path: dist/*
 
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        # creates the tag too when it doesn't exist yet (pushes to main)
+        if: steps.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" dist/manifest.json \
-            --title "$GITHUB_REF_NAME" --notes "Jellyfin repository (this version only): https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/manifest.json · md5 ${{ steps.package.outputs.md5 }} · sha256 ${{ steps.package.outputs.sha256 }}"
+          gh release create "$TAG" "${{ steps.package.outputs.zip }}" dist/manifest.json --target "$GITHUB_SHA" \
+            --title "$TAG" --generate-notes \
+            --notes "Jellyfin repository (this version only): https://github.com/${{ github.repository }}/releases/download/$TAG/manifest.json · md5 ${{ steps.package.outputs.md5 }} · sha256 ${{ steps.package.outputs.sha256 }}"
