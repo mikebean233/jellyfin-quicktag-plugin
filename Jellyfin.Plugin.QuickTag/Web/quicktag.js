@@ -32,6 +32,7 @@
         recent: [],
         undo: [],            // [{tag, ids, add}]
         cursor: null,        // card element the keyboard is on
+        barFocus: null,      // bar control the D-pad was last on
         anchor: null,        // last clicked card, for shift-click ranges
         confirm: null,       // {action, timer} while a bulk button waits for its second click
         detailsItem: null    // {Id, Type, Name} of the details page shown
@@ -152,6 +153,9 @@
 .qt-appBarButton { display: inline-flex; align-items: center; justify-content: center; padding: 8px; margin: 0 2px;
   border: none; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
 .qt-appBarButton:hover { background: rgba(255,255,255,.08); }
+.qt-appBarButton:focus-visible { color: var(--qt-accent); outline: none; }
+.qt-chip:focus-visible, .qt-btn:focus-visible, .layout-tv .qt-chip:focus, .layout-tv .qt-btn:focus {
+  outline: 2px solid #fff; outline-offset: 2px; }
 
 body.qt-active .mainAnimatedPage { top: var(--qt-bar-h) !important; }
 body.qt-active .qt-card { cursor: copy; scroll-margin-top: calc(var(--qt-top) + var(--qt-bar-h) + 12px); scroll-margin-bottom: 12px; }
@@ -277,15 +281,18 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
             el('div', { class: 'qt-help', hidden: '' }, [
                 'Click a title to add or remove the tag. ',
                 el('kbd', { text: 'Shift' }), '+click: the same for every title since the last one clicked. ',
-                el('kbd', { text: '← ↑ ↓ →' }), ' move, ',
+                el('kbd', { text: '← ↑ ↓ →' }), ' move (', el('kbd', { text: '↑' }), ' from the top row: this bar), ',
                 el('kbd', { text: 'Space' }), ' / ', el('kbd', { text: 'Enter' }), ' toggle, ',
                 el('kbd', { text: '/' }), ' change tag, ',
                 el('kbd', { text: '1' }), '–', el('kbd', { text: String(MAX_RECENT) }), ' recent tags, ',
                 el('kbd', { text: 'Ctrl+Z' }), ' undo, ',
-                el('kbd', { text: 'Esc' }), ' done.'
+                el('kbd', { text: 'Esc' }), ' / Back: done.'
             ])
         ]);
         bar.hidden = true;
+        bar.addEventListener('focusin', function (e) {
+            state.barFocus = e.target;
+        });
         document.body.appendChild(bar);
         new ResizeObserver(updateBarHeight).observe(bar);
     }
@@ -367,8 +374,19 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
         }
     }
 
+    // Esc on a keyboard, Back on a TV remote (Tizen sends 10009, webOS 461)
+    function isBack(e) {
+        return e.key === 'Escape' || e.key === 'XF86Back' || e.key === 'GoBack' || e.key === 'BrowserBack'
+            || e.keyCode === 10009 || e.keyCode === 461;
+    }
+
     function onInputKey(e) {
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const caretAtEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
+        if (e.key === 'ArrowRight' && caretAtEnd) {
+            // on to the next control in the bar (the D-pad has no Tab)
+            e.preventDefault();
+            moveInBar(1);
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             if (list.hidden) {
                 openList();
@@ -381,8 +399,8 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
             if (listIndex >= 0) {
                 chooseFromList(listIndex);
             }
-        } else if (e.key === 'Escape' || e.key === 'Tab') {
-            if (e.key === 'Escape') {
+        } else if (isBack(e) || e.key === 'Tab') {
+            if (e.key !== 'Tab') {
                 e.preventDefault();
             }
             input.blur();
@@ -475,10 +493,12 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
             return;
         }
         const chips = bar.querySelector('.qt-chips');
+        const focused = chips.contains(document.activeElement) ? document.activeElement.dataset.tag : null;
         chips.textContent = '';
         state.recent.forEach(function (tag, i) {
             chips.appendChild(el('button', {
                 type: 'button',
+                'data-tag': tag,
                 class: 'qt-chip' + (tag === state.tag ? ' qt-current' : ''),
                 title: 'Switch to “' + tag + '” (' + (i + 1) + ')',
                 onclick: function () {
@@ -486,6 +506,14 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
                 }
             }, [el('kbd', { text: String(i + 1) }), tag]));
         });
+        if (focused !== null) {
+            const again = Array.prototype.find.call(chips.children, function (chip) {
+                return chip.dataset.tag === focused;
+            });
+            if (again) {
+                again.focus();
+            }
+        }
     }
 
     // ---------- cards ----------
@@ -806,14 +834,15 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
         }) || cards[0];
     }
 
+    // Returns false when there's no title that way
     function moveCursor(key) {
         const cards = visibleCards();
         if (!cards.length) {
-            return;
+            return false;
         }
         if (!state.cursor || !state.cursor.isConnected || cards.indexOf(state.cursor) < 0) {
             setCursor(firstCardInView(cards), true);
-            return;
+            return true;
         }
         const from = state.cursor.getBoundingClientRect();
         const fx = from.left + from.width / 2;
@@ -844,6 +873,56 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
         if (best) {
             setCursor(best, true);
         }
+        return !!best;
+    }
+
+    // ---------- moving between the titles and the bar (D-pad) ----------
+
+    function barControls() {
+        return [input].concat(Array.prototype.slice.call(bar.querySelectorAll('.qt-chip, .qt-btn'))).filter(function (node) {
+            return !node.disabled && isShown(node);
+        });
+    }
+
+    // From the titles: back to the control last used, else the tag field when no tag
+    // is chosen yet, else the first control after it
+    function enterBar() {
+        const controls = barControls();
+        let target = state.barFocus && controls.indexOf(state.barFocus) >= 0 ? state.barFocus : null;
+        if (!target) {
+            target = state.tag && controls.length > 1 ? controls[1] : input;
+        }
+        target.focus();
+    }
+
+    function moveInBar(step) {
+        const controls = barControls();
+        const next = controls[controls.indexOf(document.activeElement) + step];
+        if (next) {
+            next.focus();
+        }
+    }
+
+    function leaveBar() {
+        if (bar.contains(document.activeElement)) {
+            document.activeElement.blur();
+        }
+        const cards = visibleCards();
+        if (cards.length) {
+            setCursor(state.cursor && cards.indexOf(state.cursor) >= 0 ? state.cursor : firstCardInView(cards), true);
+        }
+    }
+
+    // Keys while a bar control (not the tag field) has focus
+    function onBarKey(e) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            moveInBar(e.key === 'ArrowRight' ? 1 : -1);
+        } else if (e.key === 'ArrowDown') {
+            leaveBar();
+        } else if (e.key !== 'ArrowUp') {
+            return false;   // Enter/Space press the control itself
+        }
+        return true;
     }
 
     function isTyping(target) {
@@ -860,11 +939,16 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
         }
         const key = e.key;
         const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
+        const inBar = bar && bar.contains(document.activeElement);
         let handled = true;
-        if (key === 'Escape') {
+        if (isBack(e)) {
             setActive(false);
+        } else if (inBar) {
+            handled = plain && onBarKey(e);
         } else if (/^Arrow/.test(key) && plain) {
-            moveCursor(key);
+            if (!moveCursor(key) && key === 'ArrowUp') {
+                enterBar();
+            }
         } else if ((key === ' ' || key === 'Enter') && plain && state.cursor && state.cursor.isConnected) {
             toggleCard(state.cursor, e.shiftKey);
         } else if ((key === '/' || key === 't') && plain) {
@@ -1004,7 +1088,8 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
         if (isShown(headerRight)) {
             return {
                 parent: headerRight, before: headerRight.firstChild,
-                cls: 'headerButton headerButtonRight paper-icon-button-light qt-headerButton'
+                // show-focus: jellyfin-web's focus colour for header buttons (TV layout)
+                cls: 'headerButton headerButtonRight paper-icon-button-light show-focus qt-headerButton'
             };
         }
         return null;
