@@ -381,11 +381,17 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
     }
 
     function onInputKey(e) {
-        const caretAtEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
+        // Read-only: a Samsung TV holds the field so until OK opens its keyboard, and
+        // then Left and Right have no caret to move
+        const caretAtEnd = input.readOnly
+            || (input.selectionStart === input.value.length && input.selectionEnd === input.value.length);
         if (e.key === 'ArrowRight' && caretAtEnd) {
             // on to the next control in the bar (the D-pad has no Tab)
             e.preventDefault();
             moveInBar(1);
+        } else if (e.key === 'ArrowLeft' && input.readOnly) {
+            e.preventDefault();
+            moveInBar(-1);
         } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             if (list.hidden) {
@@ -395,6 +401,9 @@ body:not(.qt-active) .qt-badge, body:not(.qt-has-tag) .qt-badge { display: none;
                 renderTagList();
             }
         } else if (e.key === 'Enter') {
+            if (listIndex < 0 && input.readOnly) {
+                return; // OK on a TV: let the web client open the keyboard
+            }
             e.preventDefault();
             if (listIndex >= 0) {
                 chooseFromList(listIndex);
